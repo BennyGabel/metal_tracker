@@ -1,0 +1,73 @@
+<nav class="sidebar bg-white border-end" style="min-width:220px;min-height:calc(100vh - 56px);">
+  <ul class="nav flex-column pt-3">
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title === 'Dashboard' ? 'active fw-bold' : 'text-dark' %>" href="/">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+    </li>
+
+    <li class="nav-item mt-2">
+      <span class="nav-link text-muted small text-uppercase fw-bold px-3">Shipments</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title && locals.title.includes('Casting') ? 'active fw-bold' : 'text-dark' %>" href="/casting-shipments">
+        <i class="bi bi-box-arrow-up-right"></i> Castings to India
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title && locals.title.includes('Invoice') ? 'active fw-bold' : 'text-dark' %>" href="/factory-invoices">
+        <i class="bi bi-box-arrow-down-left"></i> Invoices from India
+      </a>
+    </li>
+
+    <li class="nav-item mt-2">
+      <span class="nav-link text-muted small text-uppercase fw-bold px-3">Metal</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title && locals.title.includes('Balance') ? 'active fw-bold' : 'text-dark' %>" href="/metal-balances">
+        <i class="bi bi-bar-chart-line"></i> Metal Balances
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title === 'Metal Prices' ? 'active fw-bold' : 'text-dark' %>" href="/metal-prices">
+        <i class="bi bi-currency-dollar"></i> Metal Prices
+      </a>
+    </li>
+
+    <li class="nav-item mt-2">
+      <span class="nav-link text-muted small text-uppercase fw-bold px-3">Purchasing</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title && locals.title.includes('PO') ? 'active fw-bold' : 'text-dark' %>" href="/open-pos">
+        <i class="bi bi-file-earmark-text"></i> Open POs
+      </a>
+    </li>
+
+    <li class="nav-item mt-2">
+      <span class="nav-link text-muted small text-uppercase fw-bold px-3">Reports</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= locals.title && locals.title.includes('Report') ? 'active fw-bold' : 'text-dark' %>" href="/reports">
+        <i class="bi bi-file-earmark-bar-graph"></i> Reports
+      </a>
+    </li>
+
+    <% if (currentUser && currentUser.role === 'ADMIN') { %>
+    <li class="nav-item mt-2">
+      <span class="nav-link text-muted small text-uppercase fw-bold px-3">Admin</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link text-dark" href="/admin/users"><i class="bi bi-people"></i> Users</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link text-dark" href="/admin/factories"><i class="bi bi-building"></i> Factories</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link text-dark" href="/admin/settings"><i class="bi bi-gear"></i> Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link text-dark" href="/admin/audit-log"><i class="bi bi-clock-history"></i> Audit Log</a>
+    </li>
+    <% } %>
+  </ul>
+</nav>

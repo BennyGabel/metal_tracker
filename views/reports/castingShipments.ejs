@@ -1,0 +1,83 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-box-arrow-up-right"></i> Report: Casting Shipments</h4>
+  <a href="/reports" class="btn btn-outline-secondary btn-sm">← Reports</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2">
+      <% if (currentUser.role !== 'FACTORY') { %>
+      <div class="col-md-2">
+        <select name="factory_id" class="form-select form-select-sm">
+          <option value="">All Factories</option>
+          <% for (const f of factories) { %>
+            <option value="<%= f.factory_id %>" <%= filters.factory_id == f.factory_id ? 'selected' : '' %>><%= f.factory_name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+      <div class="col-md-2">
+        <select name="metal_type" class="form-select form-select-sm">
+          <option value="">All Metals</option>
+          <option value="GOLD" <%= filters.metal_type==='GOLD'?'selected':'' %>>Gold</option>
+          <option value="SILVER" <%= filters.metal_type==='SILVER'?'selected':'' %>>Silver</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          <% for (const s of ['DRAFT','APPROVED','REJECTED','SHIPPED','RECEIVED']) { %>
+            <option value="<%= s %>" <%= filters.status===s?'selected':'' %>><%= s %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-2"><input type="date" name="from_date" class="form-control form-control-sm" value="<%= filters.from_date||'' %>"></div>
+      <div class="col-md-2"><input type="date" name="to_date" class="form-control form-control-sm" value="<%= filters.to_date||'' %>"></div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/reports/casting-shipments" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="mb-2">
+  <a href="/reports/casting-shipments/export?<%= new URLSearchParams({...filters, fmt:'excel'}).toString() %>" class="btn btn-outline-success btn-sm">
+    <i class="bi bi-file-earmark-excel"></i> Excel
+  </a>
+  <a href="/reports/casting-shipments/export?<%= new URLSearchParams({...filters, fmt:'pdf'}).toString() %>" class="btn btn-outline-danger btn-sm ms-1">
+    <i class="bi bi-file-earmark-pdf"></i> PDF
+  </a>
+  <span class="text-muted small ms-2"><%= shipments.length %> records</span>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-hover">
+    <thead class="table-dark">
+      <tr><th>Shipment #</th><th>Factory</th><th>Date</th><th>Metal</th><th class="text-end">Pieces</th><th class="text-end">Net Grams</th><th class="text-end">Value (USD)</th><th>Status</th><th>Tracking</th></tr>
+    </thead>
+    <tbody>
+      <% let totG=0, totP=0, totVal=0; %>
+      <% for (const s of shipments) {
+           const pg = s.lines.reduce((a,l)=>a+parseFloat(l.net_weight_g||0),0);
+           const pp = s.lines.reduce((a,l)=>a+(l.pieces||0),0);
+           totG+=pg; totP+=pp; totVal+=parseFloat(s.dollar_value||0);
+      %>
+        <tr>
+          <td><a href="/casting-shipments/<%= s.shipment_id %>"><%= s.shipment_number %></a></td>
+          <td><%= s.factory ? s.factory.factory_name : '—' %></td>
+          <td><%= s.shipment_date %></td>
+          <td><span class="badge <%= s.metal_type==='GOLD'?'bg-warning text-dark':'bg-secondary' %>"><%= s.metal_type %></span></td>
+          <td class="text-end"><%= pp %></td>
+          <td class="text-end"><%= pg.toFixed(3) %></td>
+          <td class="text-end">$<%= parseFloat(s.dollar_value||0).toFixed(2) %></td>
+          <td><%- include('../partials/statusBadge', { status: s.status }) %></td>
+          <td class="small"><%= s.tracking_number || '' %></td>
+        </tr>
+      <% } %>
+    </tbody>
+    <tfoot class="fw-bold table-secondary">
+      <tr><td colspan="4">Totals</td><td class="text-end"><%= totP %></td><td class="text-end"><%= totG.toFixed(3) %></td><td class="text-end">$<%= totVal.toFixed(2) %></td><td colspan="2"></td></tr>
+    </tfoot>
+  </table>
+</div>

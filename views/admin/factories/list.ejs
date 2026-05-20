@@ -1,0 +1,42 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-building"></i> Factory Management</h4>
+  <a href="/admin/factories/new" class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> New Factory</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-dark">
+      <tr><th>Code</th><th>Name</th><th>Country</th><th>Contact</th><th>Email</th><th>Carrier</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      <% if (factories.length === 0) { %>
+        <tr><td colspan="8" class="text-center text-muted py-4">No factories found.</td></tr>
+      <% } %>
+      <% for (const f of factories) { %>
+        <tr>
+          <td><code><%= f.factory_code %></code></td>
+          <td><strong><%= f.factory_name %></strong></td>
+          <td><%= f.country %></td>
+          <td><%= f.contact_name || '—' %></td>
+          <td><%= f.contact_email || '—' %></td>
+          <td><%= f.default_carrier || '—' %></td>
+          <td><span class="badge <%= f.is_active ? 'bg-success' : 'bg-danger' %>"><%= f.is_active ? 'Active' : 'Inactive' %></span></td>
+          <td>
+            <a href="/admin/factories/<%= f.factory_id %>/edit" class="btn btn-sm btn-outline-primary">Edit</a>
+            <% if (f.is_active) { %>
+              <form action="/admin/factories/<%= f.factory_id %>/deactivate" method="POST" class="d-inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-sm btn-outline-warning" onclick="return confirm('Deactivate factory?')">Deactivate</button>
+              </form>
+            <% } else { %>
+              <form action="/admin/factories/<%= f.factory_id %>/activate" method="POST" class="d-inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-sm btn-outline-success">Activate</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>

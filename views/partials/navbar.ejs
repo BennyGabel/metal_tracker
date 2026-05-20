@@ -1,0 +1,21 @@
+<nav class="navbar navbar-dark bg-dark px-3 sticky-top">
+  <a class="navbar-brand fw-bold" href="/">
+    <i class="bi bi-gem"></i> BIG Metal Tracker
+  </a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <span class="text-light small">
+      <i class="bi bi-person-circle"></i>
+      <%= currentUser ? currentUser.first_name + ' ' + currentUser.last_name : '' %>
+      <span class="badge bg-secondary ms-1"><%= currentUser ? currentUser.role : '' %></span>
+    </span>
+    <a href="/change-password" class="text-light small text-decoration-none">
+      <i class="bi bi-key"></i> Password
+    </a>
+    <form action="/logout" method="POST" class="d-inline mb-0">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="btn btn-sm btn-outline-light">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </button>
+    </form>
+  </div>
+</nav>

@@ -1,0 +1,170 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-bar-chart-line"></i> Metal Balances</h4>
+  <div>
+    <a href="/metal-balances/export/excel" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-file-earmark-excel"></i> Excel
+    </a>
+    <% if (currentUser.role === 'ADMIN') { %>
+    <button class="btn btn-outline-warning btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#adjustModal">
+      <i class="bi bi-sliders"></i> Manual Adjustment
+    </button>
+    <button class="btn btn-outline-info btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#openingModal">
+      <i class="bi bi-database"></i> Set Opening Balance
+    </button>
+    <% } %>
+  </div>
+</div>
+
+<!-- Balance cards by factory -->
+<div class="row g-3 mb-4">
+  <% if (factoryGroups.length === 0) { %>
+    <div class="col-12"><div class="alert alert-info">No metal balances found. Set opening balances to get started.</div></div>
+  <% } %>
+  <% for (const fg of factoryGroups) { %>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-dark text-white">
+          <strong><i class="bi bi-building"></i> <%= fg.factory.factory_name %></strong>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr><th>Purity</th><th class="text-end">Balance (g)</th><th>Status</th><th>Last Updated</th></tr>
+            </thead>
+            <tbody>
+              <% for (const p of purities) { %>
+                <% const bal = fg.balances[p]; %>
+                <% const grams = bal ? bal.grams : 0; %>
+                <tr>
+                  <td><span class="badge bg-light text-dark border"><%= p %></span></td>
+                  <td class="text-end fw-bold <%= grams < 0 ? 'text-danger' : grams === 0 ? 'text-muted' : 'text-success' %>">
+                    <%= grams.toFixed(3) %>
+                  </td>
+                  <td>
+                    <% if (grams < 0) { %>
+                      <span class="badge bg-danger">Error</span>
+                    <% } else if (grams === 0) { %>
+                      <span class="badge bg-secondary">Zero</span>
+                    <% } else { %>
+                      <span class="badge bg-success">OK</span>
+                    <% } %>
+                  </td>
+                  <td class="text-muted small"><%= bal ? new Date(bal.updated).toLocaleDateString() : '—' %></td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- Recent Adjustments -->
+<div class="card">
+  <div class="card-header"><strong><i class="bi bi-sliders"></i> Recent Manual Adjustments</strong></div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Factory</th><th>Purity</th><th class="text-end">Change (g)</th><th>Reason</th><th>By</th></tr>
+      </thead>
+      <tbody>
+        <% if (adjustments.length === 0) { %>
+          <tr><td colspan="6" class="text-center text-muted py-3">No adjustments yet.</td></tr>
+        <% } %>
+        <% for (const a of adjustments) { %>
+          <tr>
+            <td class="text-muted small"><%= new Date(a.adjusted_at).toLocaleString() %></td>
+            <td><%= a.factory ? a.factory.factory_name : '—' %></td>
+            <td><%= a.metal_purity %></td>
+            <td class="text-end <%= parseFloat(a.adjustment_grams) >= 0 ? 'text-success' : 'text-danger' %>">
+              <%= parseFloat(a.adjustment_grams) >= 0 ? '+' : '' %><%= parseFloat(a.adjustment_grams).toFixed(3) %>
+            </td>
+            <td><%= a.reason %></td>
+            <td class="small"><%= a.adjustedBy ? a.adjustedBy.first_name + ' ' + a.adjustedBy.last_name : '—' %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% if (currentUser.role === 'ADMIN') { %>
+<!-- Manual Adjustment Modal -->
+<div class="modal fade" id="adjustModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Manual Balance Adjustment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/metal-balances/adjust" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Factory</label>
+            <select name="factory_id" class="form-select" required>
+              <option value="">— Select —</option>
+              <% for (const f of factories) { %>
+                <option value="<%= f.factory_id %>"><%= f.factory_name %></option>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Metal Purity</label>
+            <select name="metal_purity" class="form-select" required>
+              <% for (const p of purities) { %><option value="<%= p %>"><%= p %></option><% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Adjustment (grams) — positive to add, negative to deduct</label>
+            <input type="number" name="adjustment_grams" class="form-control" step="0.001" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control" rows="2" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning">Save Adjustment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Opening Balance Modal -->
+<div class="modal fade" id="openingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Set Opening Balance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/metal-balances/opening" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Factory</label>
+            <select name="factory_id" class="form-select" required>
+              <option value="">— Select —</option>
+              <% for (const f of factories) { %>
+                <option value="<%= f.factory_id %>"><%= f.factory_name %></option>
+              <% } %>
+            </select>
+          </div>
+          <% for (const p of purities) { %>
+          <div class="mb-2">
+            <label class="form-label small"><%= p %> (grams)</label>
+            <input type="number" name="balances[<%= p %>]" class="form-control form-control-sm" step="0.001" min="0" value="0">
+          </div>
+          <% } %>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info">Set Opening Balances</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>

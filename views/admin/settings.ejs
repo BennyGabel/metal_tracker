@@ -1,0 +1,127 @@
+<h4 class="mb-4"><i class="bi bi-gear"></i> System Settings</h4>
+
+<form action="/admin/settings" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <div class="card mb-4">
+    <div class="card-header"><strong><i class="bi bi-envelope"></i> SMTP / Email Settings</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">SMTP Host</label>
+          <input type="text" name="smtp_host" class="form-control" value="<%= settings.smtp_host || '' %>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Port</label>
+          <input type="number" name="smtp_port" class="form-control" value="<%= settings.smtp_port || '587' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">From Address</label>
+          <input type="email" name="smtp_from" class="form-control" value="<%= settings.smtp_from || '' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">SMTP Username</label>
+          <input type="text" name="smtp_user" class="form-control" value="<%= settings.smtp_user || '' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">SMTP Password</label>
+          <input type="password" name="smtp_password" class="form-control" placeholder="Leave blank to keep current">
+        </div>
+        <div class="col-12">
+          <label class="form-label">NY Notification Emails (comma-separated override — leave blank to use all ADMIN/OFFICE users)</label>
+          <input type="text" name="ny_notification_emails" class="form-control" value="<%= settings.ny_notification_emails || '' %>" placeholder="email1@domain.com, email2@domain.com">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong><i class="bi bi-hdd-network"></i> FTP Import Settings (Open POs)</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">FTP Host</label>
+          <input type="text" name="ftp_host" class="form-control" value="<%= settings.ftp_host || '' %>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Port</label>
+          <input type="number" name="ftp_port" class="form-control" value="<%= settings.ftp_port || '21' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Poll Interval (minutes)</label>
+          <input type="number" name="ftp_poll_minutes" class="form-control" min="5" value="<%= settings.ftp_poll_minutes || '60' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">FTP Username</label>
+          <input type="text" name="ftp_user" class="form-control" value="<%= settings.ftp_user || '' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">FTP Password</label>
+          <input type="password" name="ftp_password" class="form-control" placeholder="Leave blank to keep current">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">FTP File Path</label>
+          <input type="text" name="ftp_path" class="form-control" value="<%= settings.ftp_path || '/open_pos.json' %>">
+        </div>
+        <div class="col-12">
+          <label class="form-label">PO Image Base URL</label>
+          <input type="url" name="po_image_base_url" class="form-control"
+            value="<%= settings.po_image_base_url || '' %>"
+            placeholder="https://example.com/images/">
+          <div class="form-text">Base URL for item images shown in Open POs. Must end with a trailing slash.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong><i class="bi bi-geo-alt"></i> Company Address</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Company Name</label>
+          <input type="text" name="company_name" class="form-control" maxlength="100" value="<%= settings.company_name || '' %>" placeholder="e.g. BIG CO LLC">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Address</label>
+          <input type="text" name="address1" class="form-control" maxlength="50" value="<%= settings.address1 || '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">City</label>
+          <input type="text" name="city" class="form-control" maxlength="50" value="<%= settings.city || '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">State</label>
+          <input type="text" name="state" class="form-control" maxlength="50" value="<%= settings.state || '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">ZIP</label>
+          <input type="text" name="zip" class="form-control" maxlength="50" value="<%= settings.zip || '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-control" maxlength="50" value="<%= settings.phone || '' %>" placeholder="e.g. 212-868-9365">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong><i class="bi bi-sticky"></i> Notes</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <% for (let i = 1; i <= 10; i++) { %>
+          <% const key = 'note' + String(i).padStart(2, '0'); %>
+          <div class="col-md-6">
+            <label class="form-label">Note <%= String(i).padStart(2, '0') %></label>
+            <input type="text" name="<%= key %>" class="form-control" maxlength="50"
+              value="<%= settings[key] || '' %>">
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Settings</button>
+  <div class="form-text mt-2">Note: Changes to poll interval take effect after server restart.</div>
+</form>

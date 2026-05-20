@@ -1,0 +1,120 @@
+<h4 class="mb-4">
+  <i class="bi bi-box-arrow-up-right"></i> <%= title %>
+</h4>
+
+<form action="<%= isEdit ? '/casting-shipments/' + shipment.shipment_id + '?_method=PUT' : '/casting-shipments' %>" method="POST" id="shipmentForm">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="metal_type" value="<%= metalType %>">
+
+  <div class="row g-3 mb-4">
+    <!-- Header fields -->
+    <div class="col-md-4">
+      <label class="form-label">Factory <span class="text-danger">*</span></label>
+      <select name="factory_id" class="form-select" required <%= isEdit ? 'disabled' : '' %>>
+        <option value="">— Select Factory —</option>
+        <% for (const f of factories) { %>
+          <option value="<%= f.factory_id %>"
+            <%= (shipment && shipment.factory_id == f.factory_id) ? 'selected' : '' %>>
+            <%= f.factory_name %>
+          </option>
+        <% } %>
+      </select>
+      <% if (isEdit) { %>
+        <input type="hidden" name="factory_id" value="<%= shipment.factory_id %>">
+      <% } %>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Metal Type</label>
+      <input type="text" class="form-control" value="<%= metalType %>" readonly>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Metal Lock ($/troy oz)</label>
+      <input type="number" name="metal_lock" id="metalLockInput" class="form-control" step="0.0001" min="0"
+        value="<%= isEdit ? (shipment.metal_lock != null ? parseFloat(shipment.metal_lock).toFixed(4) : '') : (defaultMetalLock != null ? defaultMetalLock.toFixed(4) : '') %>">
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Shipment Date</label>
+      <input type="text" class="form-control" value="<%= isEdit ? shipment.shipment_date : new Date().toISOString().split('T')[0] %>" readonly>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Carrier</label>
+      <input type="text" name="carrier" class="form-control" value="<%= shipment ? shipment.carrier : 'FedEx' %>">
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Total Value (USD)</label>
+      <input type="number" name="dollar_value" id="totalValue" class="form-control" step="0.01" min="0"
+        value="<%= shipment ? parseFloat(shipment.dollar_value).toFixed(2) : '0.00' %>">
+    </div>
+  </div>
+
+  <!-- Detail Lines -->
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Detail Lines</strong>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="addLine">
+        <i class="bi bi-plus"></i> Add Line
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0" id="linesTable">
+        <thead class="table-light">
+          <tr>
+            <th style="width:160px">Purity</th>
+            <th style="width:120px">Pieces</th>
+            <th style="width:150px">Net Weight (g)</th>
+            <th style="width:130px">Price/g</th>
+            <th style="width:150px">Value (USD)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="linesBody">
+          <% const existingLines = (shipment && shipment.lines && shipment.lines.length) ? shipment.lines : [{}]; %>
+          <% for (let i = 0; i < existingLines.length; i++) { %>
+            <% const line = existingLines[i]; %>
+            <tr class="line-row">
+              <td>
+                <select name="lines[<%= i %>][metal_purity]" class="form-select form-select-sm purity-select" required>
+                  <% const purities = metalType === 'GOLD' ? ['10KT','14KT','18KT'] : ['925']; %>
+                  <% for (const p of purities) { %>
+                    <option value="<%= p %>" <%= line.metal_purity === p ? 'selected' : '' %>><%= p %></option>
+                  <% } %>
+                </select>
+              </td>
+              <td><input type="number" name="lines[<%= i %>][pieces]" class="form-control form-control-sm" min="1" value="<%= line.pieces || '' %>" required></td>
+              <td><input type="number" name="lines[<%= i %>][net_weight_g]" class="form-control form-control-sm line-grams" step="0.001" min="0.001" value="<%= line.net_weight_g || '' %>" required></td>
+              <td><input type="number" name="lines[<%= i %>][price_per_gram]" class="form-control form-control-sm line-ppg" step="0.01" value="<%= line.price_per_gram != null ? parseFloat(line.price_per_gram).toFixed(2) : '' %>" readonly></td>
+              <td><input type="number" name="lines[<%= i %>][dollar_value]" class="form-control form-control-sm line-dollar" step="0.01" min="0" value="<%= line.dollar_value || '0.00' %>" readonly></td>
+              <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">✕</button></td>
+            </tr>
+          <% } %>
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td class="fw-bold ps-2">Totals</td>
+            <td id="totalPieces" class="fw-bold">0</td>
+            <td id="totalGrams" class="fw-bold">0.000</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <input type="hidden" id="metalTypeHidden" value="<%= metalType %>">
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save"></i> <%= isEdit ? 'Update Shipment' : 'Create Shipment' %>
+    </button>
+    <a href="/casting-shipments" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+<script src="/js/shipmentForm.js"></script>

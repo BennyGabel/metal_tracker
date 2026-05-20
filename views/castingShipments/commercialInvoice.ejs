@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commercial Invoice – <%= shipment.shipment_number %></title>
+  <style>
+    /* ============================================================
+       COMMERCIAL INVOICE TEMPLATE
+       Template file : views/castingShipments/commercialInvoice.ejs
+       Controller    : controllers/castingShipmentController.js → commercialInvoice()
+       Route         : GET /casting-shipments/:id/commercial-invoice
+
+       SOURCE DATA
+         casting_shipments       → shipment_number, shipment_date, carrier,
+                                   tracking_number, metal_type, metal_lock, dollar_value
+         casting_shipment_lines  → pieces, net_weight_g, metal_purity,
+                                   price_per_gram, dollar_value
+         factories               → factory_name, address, country, notes, terms
+         system_settings
+             note01  = Exporter company name
+             note02  = Exporter phone / extra address line
+             address1, city, state, zip = Exporter mailing address
+             note03–note10 = Notes / terms printed at the bottom
+
+       Edit this file to change any layout, labels, columns, or styling.
+       The @media print block controls what prints.
+    ============================================================ */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10px;
+      color: #000;
+      background: #d0d0d0;
+    }
+
+    /* ── Screen toolbar ── */
+    .screen-bar {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 9px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      font-size: 13px;
+    }
+    .screen-bar .lbl { flex: 1; font-weight: bold; }
+    .btn {
+      border: none; border-radius: 4px; padding: 6px 16px;
+      cursor: pointer; font-size: 12px; font-weight: bold;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-back  { background: #555; color: #fff; }
+    .btn-print { background: #0d6efd; color: #fff; }
+
+    /* ── Page wrapper ── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 18px auto;
+      padding: 10mm 12mm;
+      box-shadow: 0 2px 14px rgba(0,0,0,.25);
+    }
+
+    /* ── Main invoice wrapper table ── */
+    .inv {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.5px solid #000;
+    }
+    .inv td, .inv th {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: top;
+    }
+
+    /* Title row */
+    .inv .title-row td {
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      padding: 6px;
+      border-bottom: 1px solid #000;
+    }
+
+    /* Exporter / Invoice meta */
+    .inv .exporter-cell { width: 55%; vertical-align: top; font-size: 11px; line-height: 1.3; }
+    .inv .meta-cell     { width: 45%; vertical-align: top; font-size: 11px; line-height: 1.3; }
+
+    /* Consignee row */
+    .inv .consignee-cell { font-size: 11px; line-height: 1.3; }
+
+    /* Subject row */
+    .inv .subject-row td {
+      text-align: center;
+      font-weight: bold;
+      font-size: 11.5px;
+      letter-spacing: 0.5px;
+      padding: 5px;
+      text-decoration: underline;
+    }
+
+    /* Items table header */
+    .inv .items-head th {
+      text-align: center;
+      font-size: 10px;
+      font-weight: bold;
+      background: #f0f0f0;
+      padding: 4px 3px;
+      vertical-align: middle;
+    }
+
+    /* Item rows */
+    .inv .item-row td { padding: 4px 5px; font-size: 11px; }
+    .inv .item-row td.ctr { text-align: center; }
+    .inv .item-row td.r   { text-align: right; }
+
+    /* Empty padding rows */
+    .inv .pad-row td { height: 20px; border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; }
+
+    /* Total row */
+    .inv .total-row td {
+      font-weight: bold;
+      font-size: 11px;
+      padding: 4px 5px;
+      border-top: 1px solid #000;
+    }
+    .inv .total-row td.r { text-align: right; }
+
+    /* Amount in words */
+    .inv .words-row td {
+      font-size: 11px;
+      padding: 5px 6px;
+      line-height: 1.3;
+    }
+
+    /* Notes */
+    .inv .notes-row td {
+      font-size: 10.5px;
+      line-height: 1.3;
+      padding: 5px 6px;
+    }
+
+    /* Signature */
+    .inv .sig-row td {
+      text-align: right;
+      padding: 10px 10px 6px 6px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; }
+      .screen-bar { display: none; }
+      .page { margin: 0; padding: 8mm 10mm; box-shadow: none; width: 100%; min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<%
+/* ── helpers ── */
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(String(d) + 'T00:00:00');
+  const m  = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December'];
+  return m[dt.getMonth()] + ' ' + dt.getDate() + '-' + dt.getFullYear();
+}
+
+function fmtNum(n, dec) {
+  return parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+function toWords(amount) {
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+                 'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
+                 'Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function b1000(n) {
+    if (n === 0) return '';
+    if (n < 20)  return ones[n];
+    if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+    return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + b1000(n%100) : '');
+  }
+  const dollars = Math.floor(amount);
+  const cents   = Math.round((amount - dollars) * 100);
+  let w = '';
+  if (dollars >= 1000000) { w += b1000(Math.floor(dollars/1000000)) + ' Million '; }
+  if (dollars % 1000000 >= 1000 || (dollars < 1000000 && dollars >= 1000)) {
+    w += b1000(Math.floor((dollars % 1000000) / 1000)) + ' Thousand ';
+  }
+  if (dollars % 1000) w += b1000(dollars % 1000) + ' ';
+  if (!w.trim()) w = 'Zero ';
+  w = w.trim() + ' Dollar' + (dollars !== 1 ? 's' : '');
+  if (cents > 0) w += ' and ' + b1000(cents) + ' Cent' + (cents !== 1 ? 's' : '');
+  return w.trim();
+}
+
+function descFor(purity, metalType) {
+  const map = {
+    '10KT': '10K Gold Plain Jewellery Casting',
+    '14KT': '14K Gold Plain Jewellery Casting',
+    '18KT': '18K Gold Plain Jewellery Casting',
+    '925':  'Sterling Silver Plain Jewellery Casting',
+  };
+  return map[purity] || (metalType + ' ' + purity + ' Casting Metal');
+}
+
+/* Totals */
+let totPieces = 0, totGrams = 0.0, totValue = 0.0;
+for (const l of shipment.lines) {
+  totPieces += (l.pieces || 0);
+  totGrams  += parseFloat(l.net_weight_g || 0);
+  totValue  += parseFloat(l.dollar_value  || 0);
+}
+
+const factory  = shipment.factory || {};
+const terms    = (factory.terms || '').trim();
+const subject  = 'SUPPLY OF ' + shipment.metal_type + ' CASTING AS OUTRIGHT SALE';
+
+/* Notes: note03–note10 from system settings */
+/* ***///bg 26.05.07  Added  */
+const bottomNotes = [
+  "PAYMENT INSTRUCTIONS", settings.note01, settings.note02, 
+  settings.note03, settings.note04, settings.note05, settings.note06,
+  settings.note07, settings.note08, settings.note09, settings.note10,
+  "Account Address: " + settings.address1 + ", " + settings.city + ", " + settings.state + " " + settings.zip,
+  "1) We Declare That This Invoice Shows The Actual Price Of The Goods Described & That All Particulars Are True & Correct",
+  '2) The Seller Warrants That These Products Have Been Supplied in Compliance With The Signet Responsible Sourcing Protocol ("Srsp")',
+  "3) Exported For Setting, Polishing And Finishing",
+  "4) California",
+  "   Seller Hereby Certifies That The Jewelry Described Herein Does Not Contain A Level Of Lead Or Cadmium Taht Would",
+  "   Prohibit The Jewelry From Being Sold Or Offered For Sale Pursuant to Article 10.1.1, Chapter 6.5, Division 20, Of The",
+  "   California Health And Safet Code [Sections 25214.1 - 25214.4.2].",
+  "5) On Arrival, Please Deposit Consignment At DGDCL Strong Room, Mumbai",  
+].filter(n => n && n.trim());
+
+/* Prepend airway bill line if tracking number exists */
+if (shipment.tracking_number) {
+  bottomNotes.unshift('Airway Bill #' + shipment.tracking_number);
+}
+
+/* Number of empty padding rows to ensure a minimum table height */
+const MIN_ROWS = 10;
+const padRows  = Math.max(0, MIN_ROWS - shipment.lines.length);
+%>
+
+<!-- ===== Screen toolbar ===== -->
+<div class="screen-bar">
+  <span class="lbl">Commercial Invoice &mdash; <%= shipment.shipment_number %> &nbsp; (<%= shipment.status %>)</span>
+  <a href="/casting-shipments/<%= shipment.shipment_id %>" class="btn btn-back">&#8592; Back</a>
+  <button class="btn btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
+</div>
+
+<!-- ===== Printable page ===== -->
+<div class="page">
+<table class="inv" cellspacing="0">
+
+  <!-- ① Title -->
+  <tr class="title-row">
+    <td colspan="7">COMMERCIAL INVOICE</td>
+  </tr>
+
+  <!-- ② Exporter left | Invoice meta right -->
+  <tr>
+    <td class="exporter-cell" colspan="4">
+      Exporter:<br>
+      <!-- <% if (settings.company_name) { %><strong><%= settings.company_name %></strong><br><% } %> -->
+      <% if (factory.us_abbr) { %><strong><%= factory.us_abbr %></strong><br><% } %>
+      <% if (settings.address1) { %><%= settings.address1 %><br><% } %>
+      <% if (settings.city || settings.state || settings.zip) { %>
+        <%= [settings.city, settings.state, settings.zip].filter(Boolean).join(', ') %><br>
+      <% } %>
+      <% if (settings.phone) { %>Tel: <%= settings.phone %><br><% } %>
+    </td>
+    <td class="meta-cell" colspan="3">
+      INVOICE NO: <strong><%= shipment.shipment_number %></strong><br>
+      DATE: <%= fmtDate(shipment.shipment_date) %><br>
+      Mode Of Shipment : <%= shipment.carrier || 'FedEx' %><br>
+      Country of Origin : USA<br>
+      <% if (terms) { %>Terms : <%= terms %><% } %>
+    </td>
+  </tr>
+
+  <!-- ③ Consignee -->
+  <tr>
+    <td class="consignee-cell" colspan="7">
+      <strong>Consignee:</strong><br>
+      <% if (factory.factory_name) { %><strong><%= factory.factory_name %></strong><br><% } %>
+      <% if (factory.address + factory.country + factory.notes) { %><%- factory.address.replace(/\r?\n/g, '<br>')+" "+factory.country+"  "+ factory.notes %><br><% } %>
+      <!-- <% if (factory.country)  { %><%= factory.country %><% } %>
+      <% if (factory.notes)    { %>&nbsp;&nbsp; <%= factory.notes %><% } %>  -->
+      
+      <!-- <% if (factory.country+factory.notes)  { %><%= factory.country + " " +  factory.country %><% } %> -->
+      <%  %>
+
+    </td>
+  </tr>
+
+  <!-- ④ Subject line -->
+  <tr class="subject-row">
+    <td colspan="7"><%= subject %></td>
+  </tr>
+
+  <!-- ⑤ Table header -->
+  <tr class="items-head">
+    <th style="width:5%">SR.NO.</th>
+    <th style="width:30%">DESCRIPTION</th>
+    <th style="width:9%">PURITY<br>(KT)</th>
+    <th style="width:10%">QTY IN<br>PC/PR</th>
+    <th style="width:12%">QTY IN<br>GMS</th>
+    <th style="width:17%">PRICE PER<br>GMS IN US $</th>
+    <th style="width:17%">AMOUNT US $</th>
+  </tr>
+
+  <!-- ⑥ Line items -->
+  <% let rowNum = 1; %>
+  <% for (const line of shipment.lines) { %>
+  <tr class="item-row">
+    <td class="ctr"><%= rowNum++ %></td>
+    <td><%= descFor(line.metal_purity, shipment.metal_type) %></td>
+    <td class="ctr"><%= line.metal_purity.replace('KT','K') %></td>
+    <!-- <td class="ctr"><%= line.pieces || '' %></td> As per request, WON'T PRINT QTY -->   
+    <td class="ctr"><%= '' %></td>
+    <td class="r"><%= fmtNum(line.net_weight_g, 2) %></td>
+    <td class="r"><%= line.price_per_gram ? fmtNum(line.price_per_gram, 2) : '' %></td>
+    <td class="r"><%= fmtNum(line.dollar_value, 2) %></td>
+  </tr>
+  <% } %>
+
+  <!-- padding rows -->
+  <% for (let i = 0; i < padRows; i++) { %>
+  <tr class="pad-row">
+    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+  </tr>
+  <% } %>
+
+  <!-- ⑦ Totals row -->
+  <tr class="total-row">
+    <!-- <td colspan="3"></td>                         ***///bg Remove total qty    -->
+    <td colspan="4"></td>
+    <!-- <td class="r"><%= totPieces || '' %></td>     ***///bg Remove total qty    -->
+    <td class="r"><strong><%= fmtNum(totGrams, 2) %></strong></td>
+    <td></td>
+    <td class="r"><strong><%= fmtNum(totValue, 2) %></strong></td>
+  </tr>
+
+  <!-- ⑧ Amount in words -->
+  <tr class="words-row">
+    <td colspan="7">
+      TOTAL CIF US $ <%= toWords(totValue) %>.
+    </td>
+  </tr>
+
+  <!-- ⑨ Notes / Terms -->
+  <% if (bottomNotes.length) { %>
+  <tr class="notes-row">
+    <td colspan="7">
+      <% for (const note of bottomNotes) { %>
+        <%= note %><br>
+      <% } %>
+    </td>
+  </tr>
+  <% } %>
+
+  <!-- ⑩ Signature -->
+  <tr class="sig-row">
+    <td colspan="7">
+      <% if (settings.company_name) { %><strong><%= settings.company_name %></strong><br><% } %>
+      <br><br>
+      AUTHORISED SIGNATORY
+    </td>
+  </tr>
+
+</table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+<%
+  const statusMap = {
+    DRAFT:    ['bg-secondary', 'Draft'],
+    APPROVED: ['bg-primary',   'Approved'],
+    REJECTED: ['bg-danger',    'Rejected'],
+    SHIPPED:  ['bg-warning text-dark', 'Shipped'],
+    RECEIVED: ['bg-success',   'Received'],
+    PENDING:  ['bg-warning text-dark', 'Pending'],
+    ACCEPTED: ['bg-success',   'Accepted'],
+  };
+  const [cls, label] = statusMap[status] || ['bg-light text-dark', status];
+%>
+<span class="badge <%= cls %>"><%= label %></span>

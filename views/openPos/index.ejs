@@ -1,0 +1,209 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4><i class="bi bi-file-earmark-text"></i> Open Purchase Orders</h4>
+    <small class="text-muted">
+      Last import: <%= lastImport ? new Date(lastImport.imported_at).toLocaleString() + ' (' + lastImport.status + ')' : 'Never' %>
+    </small>
+  </div>
+  <div>
+    <% if (['ADMIN','OFFICE'].includes(currentUser.role)) { %>
+    <form action="/open-pos/refresh" method="POST" class="d-inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="btn btn-outline-info btn-sm me-2" onclick="return confirm('Refresh from FTP?')">
+        <i class="bi bi-arrow-clockwise"></i> Refresh from FTP
+      </button>
+    </form>
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#uploadJsonModal">
+      <i class="bi bi-upload"></i> Upload JSON
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
+      <i class="bi bi-filetype-csv"></i> Import CSV
+    </button>
+    <% } %>
+    <a href="/open-pos/export/excel" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-file-earmark-excel"></i> Excel
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2">
+      <div class="col-md-2">
+        <select name="vendor" class="form-select form-select-sm">
+          <option value="">All Vendors</option>
+          <% for (const v of vendors) { %>
+            <option value="<%= v %>" <%= filters.vendor === v ? 'selected' : '' %>><%= v %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="item" class="form-select form-select-sm">
+          <option value="">All Items</option>
+          <% for (const it of items) { %>
+            <option value="<%= it %>" <%= filters.item === it ? 'selected' : '' %>><%= it %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="kt" class="form-select form-select-sm">
+          <option value="">All KT</option>
+          <% for (const k of kts) { %>
+            <option value="<%= k %>" <%= filters.kt === k ? 'selected' : '' %>><%= k %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="text" name="search" class="form-control form-select-sm" value="<%= filters.search||'' %>" placeholder="Search PO#, vendor, item...">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/open-pos" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-responsive">
+  <table class="table table-hover table-sm align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>PO #</th>
+        <th>Vendor</th>
+        <th>PO Date</th>
+        <th>Req. Date</th>
+        <th>BIG Item</th>
+        <th>KT</th>
+        <th>Vendor Part #</th>
+        <th class="text-end">Unit FGR</th>
+        <th class="text-end">Qty Ord.</th>
+        <th class="text-end">Qty Rcvd.</th>
+        <th class="text-end">Qty Open</th>
+        <th class="text-end">Total Open FGR</th>
+        <th>Image</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (pos.length === 0) { %>
+        <tr><td colspan="11" class="text-center text-muted py-4">No open POs. Use "Refresh from FTP" to import.</td></tr>
+      <% } %>
+      <% let sumOrd=0, sumRcvd=0, sumOpen=0, sumFgr=0; %>
+      <% for (const p of pos) {
+           sumOrd  += p.qty_ordered  || 0;
+           sumRcvd += p.qty_received || 0;
+           sumOpen += p.qty_open     || 0;
+           sumFgr  += parseFloat(p.total_open_fgr || 0);
+      %>
+        <tr>
+          <td class="fw-bold"><%= p.po_number %></td>
+          <td><%= p.vendor || '—' %></td>
+          <td><%= p.po_date || '—' %></td>
+          <td><%= p.reqdate || '—' %></td>
+          <td><%= p.item || '—' %></td>
+          <td><span class="badge bg-light text-dark border"><%= p.kt || '—' %></span></td>
+          <td><%= p.vpartno || '—' %></td>
+          <td class="text-end"><%= parseFloat(p.unit_fgr||0).toFixed(3) %></td>
+          <td class="text-end"><%= p.qty_ordered %></td>
+          <td class="text-end"><%= p.qty_received %></td>
+          <td class="text-end fw-bold"><%= p.qty_open %></td>
+          <td class="text-end fw-bold"><%= parseFloat(p.total_open_fgr||0).toFixed(3) %></td>
+          <td>
+            <% if (p.item) { %>
+              <% const imgSrc = IMAGE_BASE + p.item.toLowerCase() + '.jpg'; %>
+              <img src="<%= imgSrc %>" alt="<%= p.item %>"
+                style="width:100px;height:100px;object-fit:cover;cursor:pointer;"
+                data-bs-toggle="modal" data-bs-target="#imgModal"
+                data-bs-src="<%= imgSrc %>"
+                onclick="document.getElementById('modalImg').src=this.getAttribute('data-bs-src')"
+                onerror="this.style.visibility='hidden'">
+            <% } %>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+    <tfoot class="table-secondary fw-bold">
+      <tr>
+        <td colspan="8">Totals</td>
+        <td class="text-end"><%= sumOrd %></td>
+        <td class="text-end"><%= sumRcvd %></td>
+        <td class="text-end"><%= sumOpen %></td>
+        <td class="text-end"><%= sumFgr.toFixed(3) %></td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- Upload JSON Modal -->
+<div class="modal fade" id="uploadJsonModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-upload"></i> Import POs from JSON File</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/open-pos/upload-json?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+          <p class="text-muted small">Select a <code>.json</code> file containing an array of PO records. This will upsert all records in the file and deactivate any existing POs not present in it.</p>
+          <div class="mb-3">
+            <label for="jsonFileInput" class="form-label">JSON File</label>
+            <input type="file" class="form-control" id="jsonFileInput" name="jsonFile" accept=".json,application/json" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Import from this file? Existing POs not in the file will be deactivated.')">
+            <i class="bi bi-upload"></i> Import
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Upload CSV Modal -->
+<div class="modal fade" id="uploadCsvModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-filetype-csv"></i> Import POs from CSV File</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/open-pos/upload-csv?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+          <p class="text-muted small">
+            Select a <code>.csv</code> file with a header row. Required columns:
+            <code>po_number, vendor, po_date, item, kt, unit_fgr, qty_ordered, qty_received, for_cust, tranlineno, vpartno, reqdate, so_number</code>.
+            Any POs not present in the file will be deactivated.
+          </p>
+          <div class="mb-3">
+            <label for="csvFileInput" class="form-label">CSV File</label>
+            <input type="file" class="form-control" id="csvFileInput" name="csvFile" accept=".csv,text/csv" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Import from this CSV? Existing POs not in the file will be deactivated.')">
+            <i class="bi bi-upload"></i> Import
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imgModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Item Image</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modalImg" src="" alt="" class="img-fluid">
+      </div>
+    </div>
+  </div>
+</div>

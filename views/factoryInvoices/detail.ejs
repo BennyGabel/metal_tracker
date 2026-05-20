@@ -1,0 +1,139 @@
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h4><i class="bi bi-box-arrow-down-left"></i> Invoice: <%= invoice.invoice_number %></h4>
+    <p class="text-muted mb-0">
+      <%- include('../partials/statusBadge', { status: invoice.status }) %>
+      &nbsp; <%= invoice.factory ? invoice.factory.factory_name : '—' %> &middot; <%= invoice.invoice_date %>
+    </p>
+  </div>
+  <a href="/factory-invoices" class="btn btn-outline-secondary btn-sm">← Back</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><strong>Invoice Details</strong></div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Factory</dt><dd class="col-sm-8"><%= invoice.factory ? invoice.factory.factory_name : '—' %></dd>
+          <dt class="col-sm-4">Invoice #</dt><dd class="col-sm-8"><%= invoice.invoice_number %></dd>
+          <dt class="col-sm-4">Invoice Date</dt><dd class="col-sm-8"><%= invoice.invoice_date %></dd>
+          <dt class="col-sm-4">Carrier</dt><dd class="col-sm-8"><%= invoice.carrier || '—' %></dd>
+          <dt class="col-sm-4">Tracking #</dt>
+          <dd class="col-sm-8">
+            <% if (invoice.tracking_number) { %>
+              <a href="https://www.fedex.com/apps/fedextrack/?tracknumbers=<%= invoice.tracking_number %>" target="_blank">
+                <%= invoice.tracking_number %> <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            <% } else { %>—<% } %>
+          </dd>
+          <dt class="col-sm-4">Invoice Value</dt><dd class="col-sm-8">$<%= parseFloat(invoice.dollar_value||0).toFixed(2) %></dd>
+          <dt class="col-sm-4">Status</dt><dd class="col-sm-8"><%- include('../partials/statusBadge', { status: invoice.status }) %></dd>
+          <dt class="col-sm-4">Received Date</dt><dd class="col-sm-8"><%= invoice.received_date || '—' %></dd>
+          <dt class="col-sm-4">Received By</dt><dd class="col-sm-8"><%= invoice.receivedBy ? invoice.receivedBy.first_name + ' ' + invoice.receivedBy.last_name : '—' %></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><strong>Actions</strong></div>
+      <div class="card-body d-flex flex-column gap-2">
+        <% if (invoice.status === 'PENDING' && ['ADMIN','OFFICE','FACTORY'].includes(currentUser.role)) { %>
+          <a href="/factory-invoices/<%= invoice.invoice_id %>/edit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+        <% } %>
+        <% if (invoice.status === 'PENDING' && ['ADMIN','OFFICE'].includes(currentUser.role)) { %>
+          <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#acceptModal">
+            <i class="bi bi-check-circle"></i> Accept Shipment
+          </button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Lines (shown after ACCEPTED) -->
+<% if (invoice.lines && invoice.lines.length) { %>
+<div class="card mb-3">
+  <div class="card-header"><strong>Receipt Detail Lines</strong></div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Purity</th><th>Pieces</th><th class="text-end">Net Weight (g)</th><th class="text-end">Value (USD)</th></tr>
+      </thead>
+      <tbody>
+        <% let totG = 0; %>
+        <% for (const l of invoice.lines) { totG += parseFloat(l.net_weight_g||0); %>
+          <tr>
+            <td><span class="badge bg-light text-dark border"><%= l.metal_purity %></span></td>
+            <td><%= l.pieces %></td>
+            <td class="text-end"><%= parseFloat(l.net_weight_g).toFixed(3) %></td>
+            <td class="text-end">$<%= parseFloat(l.dollar_value||0).toFixed(2) %></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot class="fw-bold table-light">
+        <tr><td>Totals</td><td>—</td><td class="text-end"><%= totG.toFixed(3) %> g</td><td></td></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<!-- Accept Modal -->
+<% if (invoice.status === 'PENDING' && ['ADMIN','OFFICE'].includes(currentUser.role)) { %>
+<div class="modal fade" id="acceptModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Accept Invoice — Enter Receipt Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/factory-invoices/<%= invoice.invoice_id %>/accept" method="POST" id="acceptForm">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Date Received in NY</label>
+            <input type="date" name="received_date" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>" required>
+          </div>
+          <label class="form-label fw-bold">Metal Received (deducts from factory balance)</label>
+          <table class="table table-sm" id="acceptLinesTable">
+            <thead class="table-light">
+              <tr><th>Purity</th><th>Pieces</th><th>Net Weight (g)</th><th>Value (USD)</th><th></th></tr>
+            </thead>
+            <tbody id="acceptLinesBody">
+              <tr class="accept-line">
+                <td>
+                  <select name="lines[0][metal_purity]" class="form-select form-select-sm" required>
+                    <option value="10KT">10KT</option>
+                    <option value="14KT">14KT</option>
+                    <option value="18KT">18KT</option>
+                    <option value="925">925 Silver</option>
+                  </select>
+                </td>
+                <td><input type="number" name="lines[0][pieces]" class="form-control form-control-sm" min="0"></td>
+                <td><input type="number" name="lines[0][net_weight_g]" class="form-control form-control-sm" step="0.001" min="0.001" required></td>
+                <td><input type="number" name="lines[0][dollar_value]" class="form-control form-control-sm" step="0.01" min="0" value="0.00"></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger remove-accept-line">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="button" id="addAcceptLine" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus"></i> Add Line
+          </button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success" onclick="return confirm('Accept this invoice and update metal balances?')">
+            <i class="bi bi-check-circle"></i> Accept & Update Balances
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="/js/invoiceForm.js"></script>
+<% } %>

@@ -1,0 +1,69 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-clock-history"></i> Audit Log</h4>
+  <a href="/admin/audit-log/export?<%= new URLSearchParams(filters).toString() %>" class="btn btn-outline-success btn-sm">
+    <i class="bi bi-file-earmark-excel"></i> Export
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2">
+      <div class="col-md-2">
+        <select name="user_id" class="form-select form-select-sm">
+          <option value="">All Users</option>
+          <% for (const u of users) { %>
+            <option value="<%= u.user_id %>" <%= filters.user_id == u.user_id ? 'selected' : '' %>><%= u.first_name %> <%= u.last_name %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="text" name="action_type" class="form-control form-control-sm" value="<%= filters.action_type||'' %>" placeholder="Action type">
+      </div>
+      <div class="col-md-2">
+        <input type="text" name="entity_type" class="form-control form-control-sm" value="<%= filters.entity_type||'' %>" placeholder="Entity type">
+      </div>
+      <div class="col-md-2"><input type="date" name="from_date" class="form-control form-control-sm" value="<%= filters.from_date||'' %>"></div>
+      <div class="col-md-2"><input type="date" name="to_date" class="form-control form-control-sm" value="<%= filters.to_date||'' %>"></div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/admin/audit-log" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<span class="text-muted small mb-2 d-block"><%= count %> records</span>
+
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-dark">
+      <tr><th>Date/Time</th><th>User</th><th>Action</th><th>Entity</th><th>ID</th><th>Notes</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+      <% if (logs.length === 0) { %>
+        <tr><td colspan="7" class="text-center text-muted py-4">No audit records found.</td></tr>
+      <% } %>
+      <% for (const log of logs) { %>
+        <tr>
+          <td class="small text-muted"><%= new Date(log.created_at).toLocaleString() %></td>
+          <td class="small"><%= log.user ? log.user.first_name + ' ' + log.user.last_name : 'System' %></td>
+          <td><span class="badge bg-secondary small"><%= log.action_type %></span></td>
+          <td class="small text-muted"><%= log.entity_type %></td>
+          <td class="small"><%= log.entity_id || '—' %></td>
+          <td class="small"><%= log.notes || '' %></td>
+          <td class="small text-muted"><%= log.ip_address || '—' %></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (totalPages > 1) { %>
+<nav><ul class="pagination pagination-sm">
+  <% for (let p = 1; p <= totalPages; p++) { %>
+    <li class="page-item <%= p === page ? 'active' : '' %>">
+      <a class="page-link" href="?<%= new URLSearchParams({...filters, page: p}).toString() %>"><%= p %></a>
+    </li>
+  <% } %>
+</ul></nav>
+<% } %>

@@ -1,0 +1,73 @@
+/* BIG Metal Tracker — Custom Styles */
+
+body {
+  background-color: #f8f9fa;
+  font-size: 0.9rem;
+}
+
+.sidebar {
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0,0,0,.05);
+}
+
+.sidebar .nav-link {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  border-radius: 0;
+  transition: background-color 0.15s;
+}
+
+.sidebar .nav-link:hover {
+  background-color: #f0f0f0;
+}
+
+.sidebar .nav-link.active {
+  background-color: #e8f4fd;
+  color: #0d6efd !important;
+  border-left: 3px solid #0d6efd;
+}
+
+/* Compact table improvements */
+.table-sm td, .table-sm th {
+  vertical-align: middle;
+}
+
+/* Status badges */
+.badge {
+  font-size: 0.75rem;
+}
+
+/* Tiny button size */
+.btn-xs {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+/* Card header style */
+.card-header {
+  background-color: #f5f5f5;
+  font-size: 0.875rem;
+}
+
+/* Form labels */
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* Navbar */
+.navbar-brand {
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+/* Print styles */
+@media print {
+  .sidebar, nav, .btn, .card-header .btn { display: none !important; }
+  .card { border: none !important; box-shadow: none !important; }
+  body { font-size: 11px; }
+}

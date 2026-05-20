@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commercial Invoice – <%= shipment.shipment_number %></title>
+  <style>
+    /* ============================================================
+       COMMERCIAL INVOICE TEMPLATE
+       Template file : views/castingShipments/commercialInvoice.ejs
+       Controller    : controllers/castingShipmentController.js  → commercialInvoice()
+       Route         : GET /casting-shipments/:id/commercial-invoice
+
+       SOURCE DATA
+         casting_shipments       → shipment header (number, date, carrier, tracking, metal type, value)
+         casting_shipment_lines  → line items (purity, pieces, weight, price/gram, value)
+         factories               → buyer/consignee info (name, address, country, contact)
+         system_settings         → seller info and notes
+             note01  = Company / Exporter name  (Admin › Settings)
+             address1, city, state, zip = Seller address
+             note02–note10 = Notes / Terms printed at the bottom
+
+       MODIFYING THIS FORM
+         Edit this file to change any layout, labels, columns, or styling.
+         The @media print block controls what prints — hide/show sections there.
+    ============================================================ */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color: #111;
+      background: #e8e8e8;
+    }
+
+    /* ---- Screen controls (hidden on print) ---- */
+    .screen-bar {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      font-size: 13px;
+    }
+    .screen-bar .invoice-id { flex: 1; font-weight: bold; letter-spacing: 0.5px; }
+    .screen-bar .status-tag {
+      background: #f0c040;
+      color: #111;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .btn {
+      border: none;
+      border-radius: 4px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-back { background: #555; color: #fff; }
+    .btn-print { background: #0d6efd; color: #fff; }
+    .btn-print:hover { background: #0b5ed7; }
+    .btn-back:hover { background: #333; }
+
+    /* ---- Page (A4-ish, white background) ---- */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 20px auto;
+      padding: 14mm 16mm 14mm 16mm;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+    }
+
+    /* ---- Title block ---- */
+    .inv-title {
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      border-bottom: 3px solid #111;
+      padding-bottom: 6px;
+      margin-bottom: 4px;
+    }
+    .inv-meta-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #555;
+      margin-bottom: 14px;
+    }
+
+    /* ---- Two-column party section ---- */
+    .parties {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .party-box {
+      padding: 10px 12px;
+    }
+    .party-box + .party-box {
+      border-left: 1px solid #ccc;
+    }
+    .party-label {
+      font-size: 9px;
+      font-weight: bold;
+      color: #fff;
+      background: #333;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      margin: -10px -12px 8px -12px;
+    }
+    .party-body { line-height: 1.6; font-size: 11px; }
+
+    /* ---- Shipment meta table ---- */
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+    .meta-table td {
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+    }
+    .meta-table .lbl {
+      background: #f4f4f4;
+      font-weight: bold;
+      width: 18%;
+      color: #333;
+      white-space: nowrap;
+    }
+    .meta-table .val { width: 32%; }
+
+    /* ---- Line items table ---- */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+    .items-table thead tr {
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .items-table th {
+      padding: 6px 8px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 0.3px;
+    }
+    .items-table th.r, .items-table td.r { text-align: right; }
+    .items-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .items-table tbody td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .items-table tfoot td {
+      padding: 6px 8px;
+      background: #f0f0f0;
+      font-weight: bold;
+      border-top: 2px solid #1a1a2e;
+    }
+
+    /* ---- Notes / Terms ---- */
+    .notes-box {
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .notes-header {
+      font-size: 9px;
+      font-weight: bold;
+      color: #fff;
+      background: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+    }
+    .notes-body {
+      padding: 8px 10px;
+      line-height: 1.7;
+      font-size: 10px;
+      color: #222;
+    }
+
+    /* ---- Signature row ---- */
+    .sig-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 30px;
+      margin-top: 24px;
+    }
+    .sig-block { }
+    .sig-line {
+      border-bottom: 1px solid #333;
+      height: 28px;
+      margin-bottom: 4px;
+    }
+    .sig-caption {
+      font-size: 9px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ---- Print overrides ---- */
+    @media print {
+      body { background: #fff; font-size: 10.5px; }
+      .screen-bar { display: none; }
+      .page {
+        margin: 0;
+        padding: 10mm 12mm;
+        box-shadow: none;
+        width: 100%;
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Screen toolbar (hidden on print) ===== -->
+  <div class="screen-bar">
+    <span class="invoice-id">Commercial Invoice &mdash; <%= shipment.shipment_number %></span>
+    <span class="status-tag"><%= shipment.status %></span>
+    <a href="/casting-shipments/<%= shipment.shipment_id %>" class="btn btn-back">&#8592; Back</a>
+    <button class="btn btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
+  </div>
+
+  <!-- ===== Printable page ===== -->
+  <div class="page">
+
+    <!-- Title -->
+    <div class="inv-title">Commercial Invoice</div>
+    <div class="inv-meta-top">
+      <span>Invoice No: <strong><%= shipment.shipment_number %></strong></span>
+      <span>Date: <strong><%= shipment.shipment_date %></strong></span>
+      <span>Generated: <%= new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) %></span>
+    </div>
+
+    <!-- Parties -->
+    <div class="parties">
+
+      <!-- Seller / Exporter — pulled from Admin › Settings -->
+      <!-- note01 = company name, address1/city/state/zip = mailing address -->
+      <div class="party-box">
+        <div class="party-label">Seller / Exporter</div>
+        <div class="party-body">
+          <% if (settings.note01) { %>
+            <strong><%= settings.note01 %></strong><br>
+          <% } %>
+          <% if (settings.address1) { %><%= settings.address1 %><br><% } %>
+          <% if (settings.city || settings.state || settings.zip) { %>
+            <%= [settings.city, settings.state, settings.zip].filter(Boolean).join(', ') %><br>
+          <% } %>
+          USA
+        </div>
+      </div>
+
+      <!-- Buyer / Consignee — pulled from factories table -->
+      <div class="party-box">
+        <div class="party-label">Buyer / Consignee</div>
+        <div class="party-body">
+          <% if (shipment.factory) { %>
+            <strong><%= shipment.factory.factory_name %></strong><br>
+            <% if (shipment.factory.address) { %>
+              <%- shipment.factory.address.replace(/\r?\n/g, '<br>') %><br>
+            <% } %>
+            <%= shipment.factory.country %><br>
+            <% if (shipment.factory.contact_name) { %>Contact: <%= shipment.factory.contact_name %><br><% } %>
+            <% if (shipment.factory.contact_email) { %><%= shipment.factory.contact_email %><% } %>
+          <% } %>
+        </div>
+      </div>
+
+    </div><!-- /parties -->
+
+    <!-- Shipment Details -->
+    <table class="meta-table">
+      <tr>
+        <td class="lbl">Invoice No.</td>
+        <td class="val"><strong><%= shipment.shipment_number %></strong></td>
+        <td class="lbl">Invoice Date</td>
+        <td class="val"><%= shipment.shipment_date %></td>
+      </tr>
+      <tr>
+        <td class="lbl">Metal Type</td>
+        <td class="val"><%= shipment.metal_type %></td>
+        <td class="lbl">Metal Lock&nbsp;($/g)</td>
+        <td class="val"><%= shipment.metal_lock ? '$' + parseFloat(shipment.metal_lock).toFixed(4) : '—' %></td>
+      </tr>
+      <tr>
+        <td class="lbl">Carrier</td>
+        <td class="val"><%= shipment.carrier || 'FedEx' %></td>
+        <td class="lbl">Tracking No.</td>
+        <td class="val"><%= shipment.tracking_number || '—' %></td>
+      </tr>
+      <tr>
+        <td class="lbl">Country of Origin</td>
+        <td class="val">USA</td>
+        <td class="lbl">Currency</td>
+        <td class="val">USD</td>
+      </tr>
+    </table>
+
+    <!-- Line Items -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Purity</th>
+          <th>Description of Goods</th>
+          <th class="r">Pieces</th>
+          <th class="r">Net Weight (g)</th>
+          <th class="r">Price / Gram (USD)</th>
+          <th class="r">Total Value (USD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% let totPieces = 0, totWeight = 0.0, totValue = 0.0; %>
+        <% for (const line of shipment.lines) { %>
+          <% totPieces += (line.pieces || 0); totWeight += parseFloat(line.net_weight_g || 0); totValue += parseFloat(line.dollar_value || 0); %>
+          <tr>
+            <td><strong><%= line.metal_purity %></strong></td>
+            <td>
+              <%= shipment.metal_type === 'GOLD'
+                    ? line.metal_purity + ' Gold Casting Metal'
+                    : 'Sterling Silver (925) Casting Metal' %>
+            </td>
+            <td class="r"><%= line.pieces %></td>
+            <td class="r"><%= parseFloat(line.net_weight_g).toFixed(3) %></td>
+            <td class="r"><%= line.price_per_gram ? '$' + parseFloat(line.price_per_gram).toFixed(4) : '—' %></td>
+            <td class="r">$<%= parseFloat(line.dollar_value || 0).toFixed(2) %></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">TOTAL</td>
+          <td class="r"><%= totPieces %></td>
+          <td class="r"><%= totWeight.toFixed(3) %> g</td>
+          <td></td>
+          <td class="r">$<%= totValue.toFixed(2) %></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <!-- Notes / Terms (note02 – note10 from Admin › Settings) -->
+    <%
+      const noteLines = [
+        settings.note02, settings.note03, settings.note04, settings.note05,
+        settings.note06, settings.note07, settings.note08, settings.note09, settings.note10
+      ].filter(n => n && n.trim());
+    %>
+    <% if (noteLines.length) { %>
+    <div class="notes-box">
+      <div class="notes-header">Notes / Terms &amp; Conditions</div>
+      <div class="notes-body">
+        <% for (const note of noteLines) { %>
+          <%= note %><br>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Signatures -->
+    <div class="sig-row">
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-caption">Authorized Signature</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-caption">Printed Name &amp; Title</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-caption">Date</div>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+
+</body>
+</html>

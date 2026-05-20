@@ -1,0 +1,135 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-box-arrow-up-right"></i> Casting Shipments</h4>
+  <% if (['ADMIN','OFFICE'].includes(currentUser.role)) { %>
+  <div>
+    <a href="/casting-shipments/new?type=GOLD" class="btn btn-warning btn-sm me-2">
+      <i class="bi bi-plus"></i> New Gold
+    </a>
+    <a href="/casting-shipments/new?type=SILVER" class="btn btn-secondary btn-sm me-2">
+      <i class="bi bi-plus"></i> New Silver
+    </a>
+  </div>
+  <% } %>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2">
+      <% if (currentUser.role !== 'FACTORY') { %>
+      <div class="col-md-2">
+        <select name="factory_id" class="form-select form-select-sm">
+          <option value="">All Factories</option>
+          <% for (const f of factories) { %>
+            <option value="<%= f.factory_id %>" <%= filters.factory_id == f.factory_id ? 'selected' : '' %>><%= f.factory_name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+      <div class="col-md-2">
+        <select name="metal_type" class="form-select form-select-sm">
+          <option value="">All Metals</option>
+          <option value="GOLD" <%= filters.metal_type==='GOLD'?'selected':'' %>>Gold</option>
+          <option value="SILVER" <%= filters.metal_type==='SILVER'?'selected':'' %>>Silver</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          <% for (const s of ['DRAFT','APPROVED','REJECTED','SHIPPED','RECEIVED']) { %>
+            <option value="<%= s %>" <%= filters.status===s?'selected':'' %>><%= s %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="from_date" class="form-control form-control-sm" value="<%= filters.from_date||'' %>" placeholder="From">
+      </div>
+      <div class="col-md-2">
+        <input type="date" name="to_date" class="form-control form-control-sm" value="<%= filters.to_date||'' %>" placeholder="To">
+      </div>
+      <div class="col-md-2">
+        <input type="text" name="shipment_number" class="form-control form-control-sm" value="<%= filters.shipment_number||'' %>" placeholder="Shipment #">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/casting-shipments" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Export buttons -->
+<div class="mb-2">
+  <a href="/casting-shipments/export/excel<%= '?' + new URLSearchParams(filters).toString() %>" class="btn btn-outline-success btn-sm">
+    <i class="bi bi-file-earmark-excel"></i> Excel
+  </a>
+  <a href="/casting-shipments/export/pdf<%= '?' + new URLSearchParams(filters).toString() %>" class="btn btn-outline-danger btn-sm ms-1">
+    <i class="bi bi-file-earmark-pdf"></i> PDF
+  </a>
+  <span class="text-muted small ms-2"><%= count %> record(s)</span>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover table-sm align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Shipment #</th>
+        <th>Factory</th>
+        <th>Date</th>
+        <th>Metal</th>
+        <th>Pieces</th>
+        <th class="text-end">Net Grams</th>
+        <th class="text-end">Value (USD)</th>
+        <th>Status</th>
+        <th>Tracking</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (shipments.length === 0) { %>
+        <tr><td colspan="10" class="text-center text-muted py-4">No shipments found.</td></tr>
+      <% } %>
+      <% for (const s of shipments) { %>
+        <% const totalPieces = s.lines.reduce((a,l)=>a+(l.pieces||0),0); %>
+        <% const totalGrams  = s.lines.reduce((a,l)=>a+parseFloat(l.net_weight_g||0),0); %>
+        <tr>
+          <td><a href="/casting-shipments/<%= s.shipment_id %>"><%= s.shipment_number %></a></td>
+          <td><%= s.factory ? s.factory.factory_name : '—' %></td>
+          <td><%= s.shipment_date %></td>
+          <td>
+            <span class="badge <%= s.metal_type==='GOLD'?'bg-warning text-dark':'bg-secondary' %>">
+              <%= s.metal_type %>
+            </span>
+          </td>
+          <td><%= totalPieces %></td>
+          <td class="text-end"><%= totalGrams.toFixed(3) %></td>
+          <td class="text-end">$<%= parseFloat(s.dollar_value||0).toFixed(2) %></td>
+          <td><%- include('../partials/statusBadge', { status: s.status }) %></td>
+          <td>
+            <% if (s.tracking_number) { %>
+              <a href="https://www.fedex.com/apps/fedextrack/?tracknumbers=<%= s.tracking_number %>" target="_blank" class="small">
+                <%= s.tracking_number %> <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            <% } %>
+          </td>
+          <td>
+            <a href="/casting-shipments/<%= s.shipment_id %>" class="btn btn-xs btn-outline-primary btn-sm">View</a>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+<% if (totalPages > 1) { %>
+<nav>
+  <ul class="pagination pagination-sm">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <li class="page-item <%= p === page ? 'active' : '' %>">
+        <a class="page-link" href="?<%= new URLSearchParams({...filters, page: p}).toString() %>"><%= p %></a>
+      </li>
+    <% } %>
+  </ul>
+</nav>
+<% } %>
