@@ -1,0 +1,15 @@
+INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
+  ('address1', ''),
+  ('city',     ''),
+  ('state',    ''),
+  ('zip',      ''),
+  ('note01',   ''),
+  ('note02',   ''),
+  ('note03',   ''),
+  ('note04',   ''),
+  ('note05',   ''),
+  ('note06',   ''),
+  ('note07',   ''),
+  ('note08',   ''),
+  ('note09',   ''),
+  ('note10',   '');

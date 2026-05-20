@@ -1,0 +1,2 @@
+ALTER TABLE factories
+  MODIFY COLUMN notes VARCHAR(50) NULL;

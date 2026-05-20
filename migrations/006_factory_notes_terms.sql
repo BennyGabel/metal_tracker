@@ -1,0 +1,3 @@
+ALTER TABLE factories
+  ADD COLUMN notes VARCHAR(200) NULL AFTER address,
+  ADD COLUMN terms VARCHAR(20)  NULL AFTER notes;

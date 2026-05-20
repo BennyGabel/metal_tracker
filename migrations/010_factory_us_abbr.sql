@@ -1,0 +1,2 @@
+ALTER TABLE factories
+  ADD COLUMN us_abbr VARCHAR(20) NULL AFTER notes;
